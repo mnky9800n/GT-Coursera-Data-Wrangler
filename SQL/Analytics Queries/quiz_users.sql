@@ -106,16 +106,84 @@ SELECT u.session_user_id
   GROUP BY u.session_user_id
   , g.normal_grade
 
+  DECLARE @quiz_fraction FLOAT
+SET @quiz_fraction = 0.8
+
+DECLARE @student_count FLOAT
+
+  /*** Counts per Video ***/
+ SET @student_count = ( 
+  SELECT COUNT(DISTINCT q.id)
+    FROM @Quiz_submitters AS q
+  JOIN @video_views AS v
+  ON q.id = v.session_user_id
+  WHERE q.Lab_Submission_Fraction = 0
+  AND q.Quiz_Submission_Fraction > @quiz_fraction
+  )
+
+  SELECT COUNT(DISTINCT v.session_user_id)/@student_count AS [video_fraction]
+  ,v.video_order AS [video_fract] 
+  FROM @Quiz_submitters AS q
+  JOIN @video_views AS v
+  ON q.id = v.session_user_id
+  WHERE q.Lab_Submission_Fraction = 0
+  AND q.Quiz_Submission_Fraction > @quiz_fraction
+  GROUP BY v.video_order
+  /*
+  SELECT COUNT(DISTINCT v.video_order)
+  , v.video_order
+  FROM @Quiz_submitters q
+  JOIN @video_views v
+  ON q.id = v.session_user_id
+  WHERE v.lab_index = -1
+  GROUP BY v.video_order
+  */
+  /*** Counts per student
+  DECLARE @lecture TABLE (id VARCHAR(100)
+						 , lecture_unique_count FLOAT
+						 , lecture_count FLOAT
+						 )
+
+  DECLARE @lab TABLE (id VARCHAR(100)
+						 , lab_unique_count FLOAT
+						 , lab_count FLOAT
+						 )
+
+DECLARE @quiz_fraction FLOAT
+SET @quiz_fraction = 0.8
+
+
+INSERT INTO @lecture
   SELECT v1.session_user_id
   , COUNT(DISTINCT v1.video_order) AS [lecture video unique count]
   , COUNT(v1.video_order) AS [lecture video count]
-  , COUNT(DISTINCT v2.video_order) AS [lab video unique count]
-  , COUNT(v2.video_order) AS [lab video count]
   FROM @Quiz_submitters q
   JOIN @video_views AS v1
   ON q.id = v1.session_user_id
-  JOIN @video_views AS v2
-  ON q.id = v2.session_user_id
-  WHERE q.Quiz_Submission_Fraction > 0.5
+  WHERE q.Quiz_Submission_Fraction > @quiz_fraction
   AND q.Lab_Submission_Fraction < 1
+  AND v1.lab_index = -1
   GROUP BY v1.session_user_id
+
+  INSERT INTO @lab
+  SELECT v1.session_user_id
+  , COUNT(DISTINCT v1.video_order) AS [lecture video unique count]
+  , COUNT(v1.video_order) AS [lecture video count]
+  FROM @Quiz_submitters q
+  JOIN @video_views AS v1
+  ON q.id = v1.session_user_id
+  WHERE q.Quiz_Submission_Fraction > @quiz_fraction
+  AND q.Lab_Submission_Fraction < 1
+  AND v1.lab_index > -1
+  GROUP BY v1.session_user_id
+
+  SELECT le.id
+  , le.lecture_unique_count
+  , le.lecture_unique_count/56.0
+  , la.lab_unique_count
+  , la.lab_unique_count/14.0
+  FROM @lecture AS le
+  LEFT JOIN @lab AS la
+  ON le.id = la.id
+
+  ***/
